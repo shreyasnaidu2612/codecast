@@ -21,57 +21,61 @@ function Editor({ socketRef, roomId, onCodeChange }) {
   }, [onCodeChange, roomId, socketRef]);
 
   useEffect(() => {
-    const init = async () => {
-      const editor = CodeMirror.fromTextArea(
-        document.getElementById("realtimeEditor"),
-        {
-          mode: { name: "javascript", json: true },
-          theme: "dracula",
-          autoCloseTags: true,
-          autoCloseBrackets: true,
-          lineNumbers: true,
-        }
-      );
-      // for sync the code
-      editorRef.current = editor;
+    const editor = CodeMirror.fromTextArea(
+      document.getElementById("realtimeEditor"),
+      {
+        mode: { name: "javascript", json: true },
+        theme: "dracula",
+        autoCloseTags: true,
+        autoCloseBrackets: true,
+        lineNumbers: true,
+      }
+    );
+    // for sync the code
+    editorRef.current = editor;
+    editor.setSize(null, "100%");
 
-      editor.setSize(null, "100%");
-      editor.on("change", (instance, changes) => {
-        const { origin } = changes;
-        const code = instance.getValue(); // code has value which we write
-        handleCodeChange(code);
-        if (origin !== "setValue") {
-          socketRef.current.emit(ACTIONS.CODE_CHANGE, {
-            roomId,
-            code,
-          });
-        }
-      });
+    const handleChange = (instance, changes) => {
+      const { origin } = changes;
+      const code = instance.getValue();
+      handleCodeChange(code);
+      if (origin !== "setValue") {
+        socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+          roomId,
+          code,
+        });
+      }
     };
 
-    init();
+    editor.on("change", handleChange);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.off(ACTIONS.CODE_CHANGE);
+      editor.off("change", handleChange);
+      // Create a local variable for socketRef.current
+      const localSocketRef = socketRef.current;
+      if (localSocketRef) {
+        localSocketRef.off(ACTIONS.CODE_CHANGE);
       }
     };
   }, [handleCodeChange, socketRef, roomId]);
 
   useEffect(() => {
-    if (socketRef.current) {
-      const handleCodeChangeFromServer = ({ code }) => {
-        if (code !== null) {
-          editorRef.current.setValue(code);
-        }
-      };
+    const handleCodeChangeFromServer = ({ code }) => {
+      if (code !== null) {
+        editorRef.current.setValue(code);
+      }
+    };
 
-      socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
-
-      return () => {
-        socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
-      };
+    const localSocketRef = socketRef.current;
+    if (localSocketRef) {
+      localSocketRef.on(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
     }
+
+    return () => {
+      if (localSocketRef) {
+        localSocketRef.off(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
+      }
+    };
   }, [socketRef]);
 
   return (
