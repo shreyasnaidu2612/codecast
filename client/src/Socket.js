@@ -7,5 +7,10 @@ export const initSocket = async () =>{
         timeout: 10000,
         transports: ['websocket'],
     };
+const socket = io("https://codecast-431705.as.r.appspot.com", {
+  transports: ['websocket'],
+});
+
+export default socket;
     return io(process.env.REACT_APP_BACKEND_URL, options);
 }
