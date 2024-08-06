@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import "codemirror/mode/javascript/javascript";
 import "codemirror/theme/dracula.css";
 import "codemirror/addon/edit/closetag";
@@ -9,6 +9,17 @@ import { ACTIONS } from "../Actions";
 
 function Editor({ socketRef, roomId, onCodeChange }) {
   const editorRef = useRef(null);
+
+  const handleCodeChange = useCallback((code) => {
+    onCodeChange(code);
+    if (socketRef.current) {
+      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+        roomId,
+        code,
+      });
+    }
+  }, [onCodeChange, roomId, socketRef]);
+
   useEffect(() => {
     const init = async () => {
       const editor = CodeMirror.fromTextArea(
@@ -25,11 +36,10 @@ function Editor({ socketRef, roomId, onCodeChange }) {
       editorRef.current = editor;
 
       editor.setSize(null, "100%");
-      editorRef.current.on("change", (instance, changes) => {
-        // console.log("changes", instance ,  changes );
+      editor.on("change", (instance, changes) => {
         const { origin } = changes;
         const code = instance.getValue(); // code has value which we write
-        onCodeChange(code);
+        handleCodeChange(code);
         if (origin !== "setValue") {
           socketRef.current.emit(ACTIONS.CODE_CHANGE, {
             roomId,
@@ -40,21 +50,29 @@ function Editor({ socketRef, roomId, onCodeChange }) {
     };
 
     init();
-  }, []);
 
-  // data receive from server
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off(ACTIONS.CODE_CHANGE);
+      }
+    };
+  }, [handleCodeChange, socketRef, roomId]);
+
   useEffect(() => {
     if (socketRef.current) {
-      socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
+      const handleCodeChangeFromServer = ({ code }) => {
         if (code !== null) {
           editorRef.current.setValue(code);
         }
-      });
+      };
+
+      socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
+
+      return () => {
+        socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChangeFromServer);
+      };
     }
-    return () => {
-      socketRef.current.off(ACTIONS.CODE_CHANGE);
-    };
-  }, [socketRef.current]);
+  }, [socketRef]);
 
   return (
     <div style={{ height: "600px" }}>
@@ -63,4 +81,4 @@ function Editor({ socketRef, roomId, onCodeChange }) {
   );
 }
 
-export default Editor;
+export default Editor;`
