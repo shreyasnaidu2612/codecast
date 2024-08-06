@@ -22,15 +22,15 @@ function EditorPage() {
   const socketRef = useRef(null);
   useEffect(() => {
     const init = async () => {
-      socketRef.current = await initSocket();
-      socketRef.current.on("connect_error", (err) => handleErrors(err));
-      socketRef.current.on("connect_failed", (err) => handleErrors(err));
-
       const handleErrors = (err) => {
         console.log("Error", err);
         toast.error("Socket connection failed, Try again later");
         navigate("/");
       };
+
+      socketRef.current = await initSocket();
+      socketRef.current.on("connect_error", handleErrors);
+      socketRef.current.on("connect_failed", handleErrors);
 
       socketRef.current.emit(ACTIONS.JOIN, {
         roomId,
@@ -41,7 +41,7 @@ function EditorPage() {
       socketRef.current.on(
         ACTIONS.JOINED,
         ({ clients, username, socketId }) => {
-          // this insure that new user connected message do not display to that user itself
+          // this ensure that new user connected message do not display to that user itself
           if (username !== Location.state?.username) {
             toast.success(`${username} joined the room.`);
           }
@@ -70,7 +70,7 @@ function EditorPage() {
       socketRef.current.off(ACTIONS.JOINED);
       socketRef.current.off(ACTIONS.DISCONNECTED);
     };
-  }, []);
+  }, [Location.state?.username, navigate, roomId]);
 
   if (!Location.state) {
     return <Navigate to="/" />;
@@ -79,10 +79,10 @@ function EditorPage() {
   const copyRoomId = async () => {
     try {
       await navigator.clipboard.writeText(roomId);
-      toast.success(`roomIs is copied`);
+      toast.success(`Room ID is copied`);
     } catch (error) {
       console.log(error);
-      toast.error("unable to copy the room Id");
+      toast.error("Unable to copy the Room ID");
     }
   };
 
