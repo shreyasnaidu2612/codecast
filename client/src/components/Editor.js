@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import "codemirror/mode/javascript/javascript";
 import "codemirror/theme/dracula.css";
 import "codemirror/addon/edit/closetag";
@@ -9,6 +9,8 @@ import { ACTIONS } from "../Actions";
 
 function Editor({ socketRef, roomId, onCodeChange }) {
   const editorRef = useRef(null);
+
+  // Initialize CodeMirror editor
   useEffect(() => {
     const init = async () => {
       const editor = CodeMirror.fromTextArea(
@@ -21,12 +23,11 @@ function Editor({ socketRef, roomId, onCodeChange }) {
           lineNumbers: true,
         }
       );
-      // for sync the code
+      // Set editor reference
       editorRef.current = editor;
 
       editor.setSize(null, "100%");
       editorRef.current.on("change", (instance, changes) => {
-        // console.log("changes", instance ,  changes );
         const { origin } = changes;
         const code = instance.getValue(); // code has value which we write
         onCodeChange(code);
@@ -40,21 +41,26 @@ function Editor({ socketRef, roomId, onCodeChange }) {
     };
 
     init();
-  }, []);
+  }, [onCodeChange, roomId, socketRef]);
 
-  // data receive from server
+  // Handle code change from the server
   useEffect(() => {
-    if (socketRef.current) {
-      socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
-        if (code !== null) {
-          editorRef.current.setValue(code);
-        }
-      });
-    }
-    return () => {
-      socketRef.current.off(ACTIONS.CODE_CHANGE);
+    const handleCodeChange = ({ code }) => {
+      if (code !== null) {
+        editorRef.current.setValue(code);
+      }
     };
-  }, [socketRef.current]);
+
+    if (socketRef.current) {
+      socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
+      }
+    };
+  }, [socketRef]);
 
   return (
     <div style={{ height: "600px" }}>
