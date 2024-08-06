@@ -1,16 +1,25 @@
-import {io} from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-export const initSocket = async () =>{
+export const initSocket = () => {
     const options = {
-        'force new connection': true,
-        reconnectionAttempts : 'Infinity',
-        timeout: 10000,
         transports: ['websocket'],
+        reconnectionAttempts: Infinity,
+        timeout: 10000,
     };
-const socket = io("https://codecast-431705.as.r.appspot.com", {
-  transports: ['websocket'],
-});
 
-export default socket;
-    return io(process.env.REACT_APP_BACKEND_URL, options);
+    const socket = io(process.env.REACT_APP_BACKEND_URL, options);
+
+    socket.on('connect', () => {
+        console.log('Connected to socket server');
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected from socket server');
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+    });
+
+    return socket;
 }
